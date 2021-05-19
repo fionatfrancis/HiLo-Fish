@@ -1,0 +1,428 @@
+---
+title: "Mixed models for Hi-Lo fish analysis"
+author: "Fiona Francis"
+date: "5/19/2021"
+output: github_document
+---
+This is the data analysis for Jill Campbell's MSc chapter that complements the HiLo analysis for Sharon Jeffrey. This analysis examines the effect of current and other abiotic facotrs on fish abudnace, biomass and diversity at different sites in the Gulf Islands. THe data was collected slightly differently thant the invertebrate data so the the number of points and sites differ betweent the two studies. This project also invovles collaboration with Sharon Jeffery, Sarah Dudas and Francis Juanes.
+
+Jill used a total of 10 sites and recorded fish on transects at two deptsh: 3 m and 15 m. Each site was visited 3 or 4 times over the season. Current speed was measured at each site over the course of one month and the analyses use the mean daily max current measures. Site will be included as a random effect in models. Abiotic factors are current speed, depth, rock cover.
+
+```{r setup, include=FALSE}
+## Load packages ---------------------------------------------------------
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(tidyverse)
+library(lme4)
+library(nlme)
+library(bbmle)
+library(AICcmodavg)
+library(here)
+library(sjPlot)
+library(fishualize)
+
+## read in data ------------------------------------------------------
+
+data<- read_csv("FishData_Jan11.csv")
+current <-read_csv("CurrentByDay.csv")
+abiotic <- read_csv("transectdatawithallvariables.csv")
+```
+
+## Data
+
+```{r data clean up, include = F}
+
+summary(data)
+summary(current)
+summary(abiotic)
+
+## FISH DATA prep ---------------------------------------------------------
+
+#summarize by site and replicate (this code is from J. Campbell FishAnalysis Jan 11)
+
+Hisites <- c("Josef", "Burial", "Porlier", "Grainger")
+Losites <- c("Coffin", "Snake", "Dragon", "McKenzie", "Anniversary", "Georgina")
+fishdata <- data %>% 
+  #Generate Weight values for each fish
+  mutate(Weight = case_when(abSource == "DFO Haggarty and King 2004 Technical Report 2533" ~ a * (Length ^ b),
+                            abSource == "California Fish and Game Fish Bulletin 177" ~ a * ((Length * 10) ^ b),
+                            abSource == "NOAA 1978 Washington, Gowan, & Ito" ~ a * ((Length * 10) ^ b),
+                            abSource == "FishBase" ~ 10 ^ (log10(a) + (b * log10(Length))))) %>% 
+  #Create an identifier
+  mutate(TransectID = paste(Site, TransectDepth, Replicate, sep = "_"),
+         SiteID = paste(Site, TransectDepth, sep = "_"),
+         Hi_Lo = case_when(Site %in% Hisites ~ "High",
+                           Site %in% Losites ~ "Low"),
+         Hi_Lo = factor(Hi_Lo, levels = c("High", "Low"), ordered = TRUE),
+         Latin = factor(Latin),
+         CurrDepth = paste(Hi_Lo, TransectDepth, sep = ""),
+         CurrDepth = factor(CurrDepth, levels = c("High3", "High15", "Low3", "Low15"),
+                            labels = c("High 3m", "High 15m", "Low 3m", "Low 15m"), ordered = TRUE)) %>% 
+  #Remove replicate 4 from Georgina - influenced by nesting ling cod
+  filter(TransectID != "Georgina_15_4",
+         TransectID != "Georgina_3_4",
+         Family != "Embiotocidae")
+
+# Create a data frame with site richness, abundance, and biomass
+fish <- fishdata %>% 
+  group_by(Site, Hi_Lo, TransectDepth, CurrDepth, Replicate, SiteID, TransectID) %>% 
+  summarize(Richness = length(unique(Latin)),
+            Abundance = length(Length),
+            Biomass = round(sum(Weight), 2)) %>% 
+  mutate(Biomass_kg = Biomass/1000)
+
+## CURRENT DATA prep ------------------------------------------------------------------------------------------
+#we are using median max current speed for the prelimnary modelling so that it matches her other analyses
+
+current <- current %>% group_by(logger) %>%
+  summarize(CurrentMean = mean(SpeedMean), CurrentMin = mean(SpeedMin), CurrentMax = mean(SpeedMax), MedianMax = median(SpeedMax), meanCurrentSD = sd(SpeedMean), maxCurrentSD = sd(SpeedMax)) #note I think in her final summary Jill used the SD from ALL of the data when you need to calculate error around the the current sample size
+
+current <- current %>% rename(Site = logger) %>% arrange(desc(CurrentMean))
+
+# compare mean vs max in quick plot, need to decide what to use
+
+ggplot(current) + geom_point(aes(CurrentMean, CurrentMax, colour = Site), size = 3) +
+  theme_bw()
+
+# slope and % rock varialbes
+
+abiotic
+
+# rename sites in abiotic to match fish
+#abiotic <- abiotic %>% mutate(Site = replace(Site, (1:7), c("Burial", "Coffin","Dragon","Josef","McKenzie","Porlier","Snake")))
+
+# merge abiotic with fish
+
+data <- full_join(abiotic, current, by = "Site")
+data <- data %>% rename(CurrentMax = CurrentMax.x) %>% select(-CurrentMean.y, -CurrentMax.y)
+
+```
+
+``` {r, echo = F}
+data
+
+```
+
+## Exploratory plots of Abundance
+
+Current and transect depth (coloured by richness)
+
+```{r, fig.show="hold", out.width="50%", echo = F}
+
+# abundance and current
+ggplot(data) + geom_point(aes(CurrentMax, Abundance, colour = Richness), size = 3, show.legend = F) +
+    scale_color_fish(option = "Coris_gaimard", direction = -1) +  
+  theme(axis.text.x = element_text(angle = 90)) +
+  xlab("Current Speed") +
+  ylab("Abundance of fish") + 
+  theme_bw()
+
+#abundance and transect depth
+
+ggplot(data) + geom_point(aes(TransectDepth, Abundance, colour = Richness), size = 3, show.legend = F) +
+    scale_color_fish(option = "Coris_gaimard", direction = -1) +  
+  theme(axis.text.x = element_text(angle = 90)) +
+  xlab("Transect Depth (m)") +
+  ylab("Abundance of fish")+ 
+  theme_bw()
+
+```
+
+slope and rock cover
+
+```{r, fig.show="hold", out.width="50%", echo = F}
+#abundance and slope
+
+ggplot(data) + geom_point(aes(SlopeAngle, Abundance, colour = Site), size = 3, show.legend = F) +
+    scale_color_fish_d(option = "Coris_gaimard", direction = -1) +  
+  theme(axis.text.x = element_text(angle = 90)) +
+  xlab("Slope (degrees)") +
+  ylab("Abundance of fish")+ 
+  theme_bw()
+
+#abundance and rock cover
+
+ggplot(data) + geom_point(aes(PercRock, Abundance, colour = Site), size = 3, show.legend = F) +
+    scale_color_fish_d(option = "Coris_gaimard", direction = -1) +  
+  theme(axis.text.x = element_text(angle = 90)) +
+  xlab("% Rock") +
+  ylab("Abundance of fish")+ 
+  theme_bw()
+
+```
+
+## Same plots but of log biomass
+
+Current and Depth
+
+```{r, fig.show="hold", out.width="50%", echo = F}
+
+#abundance and slope
+
+ggplot(data) + geom_point(aes(TransectDepth, log10(Biomass), colour = Site), size = 3, show.legend = F) +
+    scale_color_fish_d(option = "Coris_gaimard", direction = -1) +  
+  theme(axis.text.x = element_text(angle = 90)) +
+  xlab("Transect Depth") +
+  ylab("Log biomass of fish")+ 
+  theme_bw()
+
+#abundance and rock cover
+
+ggplot(data) + geom_point(aes(CurrentMax, log10(Biomass), colour = Site), size = 3, show.legend = F) +
+    scale_color_fish_d(option = "Coris_gaimard", direction = -1) +  
+  theme(axis.text.x = element_text(angle = 90)) +
+  xlab("Current") +
+  ylab("Log biomass of fish")+ 
+  theme_bw()
+
+```
+
+Slope and Rock Cover
+
+```{r, fig.show="hold", out.width="50%", echo = F}
+
+#abundance and slope
+
+ggplot(data) + geom_point(aes(SlopeAngle, log10(Biomass), colour = Site), size = 3, show.legend = F) +
+    scale_color_fish_d(option = "Coris_gaimard", direction = -1) +  
+  theme(axis.text.x = element_text(angle = 90)) +
+  xlab("Slope (degrees)") +
+  ylab("Log biomass of fish")+ 
+  theme_bw()
+
+#abundance and rock cover
+
+ggplot(data) + geom_point(aes(PercRock, log10(Biomass), colour = Site), size = 3, show.legend = F) +
+    scale_color_fish_d(option = "Coris_gaimard", direction = -1) +  
+  theme(axis.text.x = element_text(angle = 90)) +
+  xlab("% Rock") +
+  ylab("Log biomass of fish")+ 
+  theme_bw()
+
+```
+
+
+# Models of fish abundance
+
+
+```{r abundance, echo=T}
+# hmm these don't actually look that bad haha, Lm1 is top which is not surprising as there is a ton of variation with depth in abundance
+
+#one variable
+
+Null.ab <- lme(Abundance ~ 1, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm1.ab <-  lme(Abundance ~ TransectDepth, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm2.ab <-  lme(Abundance ~ CurrentMax,
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm3.ab <- lme(Abundance ~ SlopeAngle,
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm4.ab <- lme(Abundance ~ PercRock,
+            random = ~ 1 | Site, data = data, method = "ML")
+
+#two variables
+
+Lm5.ab  <- lme(Abundance ~ TransectDepth + CurrentMax, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm6.ab  <- lme(Abundance ~ TransectDepth + SlopeAngle, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm7.ab  <- lme(Abundance ~ TransectDepth + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm8.ab  <- lme(Abundance ~ SlopeAngle + CurrentMax, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm9.ab  <- lme(Abundance ~ SlopeAngle + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm10.ab  <- lme(Abundance ~ PercRock + CurrentMax, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+#Three variables
+Lm11.ab  <- lme(Abundance ~ CurrentMax + SlopeAngle + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm12.ab  <- lme(Abundance ~ TransectDepth + SlopeAngle + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm13.ab  <- lme(Abundance ~ TransectDepth + CurrentMax + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm14.ab  <- lme(Abundance ~ TransectDepth + CurrentMax + SlopeAngle, 
+            random = ~ 1 | Site, data = data, method = "ML")
+# four variables
+
+Lm15.ab  <- lme(Abundance ~ CurrentMax + TransectDepth + SlopeAngle + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+
+bbmle::AICtab(Null.ab, Lm1.ab, Lm2.ab, Lm3.ab, Lm4.ab, Lm5.ab, Lm6.ab, Lm7.ab, Lm8.ab, Lm9.ab, Lm10.ab, Lm11.ab, Lm12.ab, Lm13.ab, Lm14.ab, Lm15.ab, base = T, weights = T, logLik = T)
+```
+
+``` {r model 7, echo = T}
+# diagnostics for Lm7.ab
+
+Lm7.ab
+
+plot(Lm7.ab) # pretty cone shaped not great
+
+ggplot(data.frame(biomass=predict(Lm7.ab,type="link"),pearson=residuals(Lm1.ab,type="pearson")),
+       aes(x=biomass,y=pearson)) +
+  geom_point() +
+  theme_bw()
+
+qqnorm(resid(Lm7.ab))#decent
+
+sjPlot::plot_model(Lm7.ab)
+```
+
+## fitting a variance structure to Lm7.ab
+
+```{R, echol = F}
+
+Lm7.ab.var <- lme(Abundance ~ TransectDepth + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm7.ab.var <- update(Lm7.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+
+Lm7.ab.var
+plot(Lm7.ab.var)
+qqnorm(Lm7.ab.var)
+
+# rerun all models with new variance structure
+Null.ab.var <- update(Null.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+Lm1.ab.var <- update(Lm1.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+Lm2.ab.var <- update(Lm2.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+Lm3.ab.var <- update(Lm3.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+Lm4.ab.var <- update(Lm4.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+Lm5.ab.var <- update(Lm5.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+Lm6.ab.var <- update(Lm6.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+Lm7.ab.var <- update(Lm7.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+Lm8.ab.var <- update(Lm8.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+Lm9.ab.var <- update(Lm9.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+Lm10.ab.var <- update(Lm10.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+Lm11.ab.var <- update(Lm11.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+Lm12.ab.var <- update(Lm12.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+Lm13.ab.var <- update(Lm13.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+Lm14.ab.var <- update(Lm14.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+Lm15.ab.var <- update(Lm15.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+
+bbmle::AICtab(Null.ab.var, Lm1.ab.var, Lm2.ab.var, Lm3.ab.var, Lm4.ab.var, Lm5.ab.var, Lm6.ab.var, Lm7.ab.var, Lm8.ab.var, Lm9.ab.var, 
+              Lm10.ab.var, Lm11.ab.var, Lm12.ab.var, Lm13.ab.var, Lm14.ab.var, Lm15.ab.var, base = T, weights = T, logLik = T)
+```
+
+# now looking at model 13 (TransectDepth + CurrentMax + PercRock)
+
+We are looking here at model 13 but there are 3 models (13, 7 and 15) which are all within 2 delta AIC. 
+```{R, echo = T}
+# diagnostics for Lm13.ab.var
+
+Lm13.ab.var
+
+summary(Lm13.ab.var)
+
+plot(Lm13.ab.var)
+
+ggplot(data.frame(biomass=predict(Lm13.ab.var,type="link"),pearson=residuals(Lm13.ab.var,type="pearson")),
+       aes(x=biomass,y=pearson)) +
+  geom_point() +
+  theme_bw()
+
+qqnorm(resid(Lm13.ab.var))
+
+
+sjPlot::plot_model(Lm13.ab.var)
+
+```
+
+# Models of fish biomass
+
+```{r biomass, echo=FALSE}
+# hmm these don't actually look that bad haha, Lm1 is top which is not surprising as there is a ton of variation with depth in abundance
+
+#one variable
+
+Null.bio <- lme(log10(Biomass) ~ 1, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm1.bio <-  lme(log10(Biomass) ~ TransectDepth, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm2.bio <-  lme(log10(Biomass) ~ CurrentMax,
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm3.bio <- lme(log10(Biomass) ~ SlopeAngle,
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm4.bio <- lme(log10(Biomass) ~ PercRock,
+            random = ~ 1 | Site, data = data, method = "ML")
+
+#two variables
+
+Lm5.bio  <- lme(log10(Biomass) ~ TransectDepth + CurrentMax, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm6.bio  <- lme(log10(Biomass) ~ TransectDepth + SlopeAngle, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm7.bio  <- lme(log10(Biomass) ~ TransectDepth + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm8.bio  <- lme(log10(Biomass) ~ SlopeAngle + CurrentMax, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm9.bio  <- lme(log10(Biomass) ~ SlopeAngle + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm10.bio  <- lme(log10(Biomass) ~ PercRock + CurrentMax, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+#Three variables
+Lm11.bio  <- lme(log10(Biomass) ~ CurrentMax + SlopeAngle + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm12.bio  <- lme(log10(Biomass) ~ TransectDepth + SlopeAngle + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm13.bio  <- lme(log10(Biomass) ~ TransectDepth + CurrentMax + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm14.bio  <- lme(log10(Biomass) ~ TransectDepth + CurrentMax + SlopeAngle, 
+            random = ~ 1 | Site, data = data, method = "ML")
+# four variables
+
+Lm15.bio  <- lme(Biomass ~ CurrentMax + TransectDepth + SlopeAngle + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+bbmle::AICtab(Null.bio, Lm1.bio, Lm2.bio, Lm3.bio, Lm4.bio, Lm5.bio, Lm6.bio, Lm7.bio, Lm8.bio, Lm9.bio, 
+              Lm10.bio, Lm11.bio, Lm12.bio, Lm13.bio, Lm14.bio, Lm15.bio, base = T, weights = T, logLik = T)
+```
+
+## Looking at model 1 but again there are 4 models within 2 delta AIC (1, 6, 5, and 7). Depth is clearly very important but the other three models contain each of the other variables of interest.
+
+```{r, echo = F}
+Lm1.bio
+
+plot(Lm1.bio)
+
+qqnorm(Lm1.bio)
+
+sjPlot::plot_model(Lm1.bio)
+
+sjPlot::plot_model(Lm5.bio)
+
+sjPlot::plot_model(Lm6.bio)
+
+sjPlot::plot_model(Lm7.bio)
+
+
+```
+
