@@ -1,12 +1,12 @@
 ---
-title: "Mixed models for Hi-Lo fish analysis"
+title: "Mixed models for hi-Lo fish analysis"
 author: "Fiona Francis"
 date: "5/19/2021"
 output: github_document
 ---
-This is the data analysis for Jill Campbell's MSc chapter that complements the HiLo analysis for Sharon Jeffrey. This analysis examines the effect of current and other abiotic facotrs on fish abudnace, biomass and diversity at different sites in the Gulf Islands. THe data was collected slightly differently thant the invertebrate data so the the number of points and sites differ betweent the two studies. This project also invovles collaboration with Sharon Jeffery, Sarah Dudas and Francis Juanes.
+These are the data analyses for Jill Campbell's MSc chapter that complements the HiLo analysis for Sharon Jeffrey's invert data. This analysis examines the effect of current and other abiotic factors on fish abundance, biomass, and diversity at different sites in the Gulf Islands. THe data was collected slightly differently than the invertebrate data so the number of points and sites differ between the two studies. This project also involvles collaborators Sharon Jeffery (DFO), Sarah Dudas(DFO), and Francis Juanes(Uvic).
 
-Jill used a total of 10 sites and recorded fish on transects at two deptsh: 3 m and 15 m. Each site was visited 3 or 4 times over the season. Current speed was measured at each site over the course of one month and the analyses use the mean daily max current measures. Site will be included as a random effect in models. Abiotic factors are current speed, depth, rock cover.
+Jill used a total of 10 sites and recorded fish on transects at two depths at each site: 3 m and 15 m. Each site was visited 3 or 4 times over the season. Current speed was measured at each site over the course of one month and the analyses use the mean daily max current measures. Site will be included as a random effect in models. Abiotic factors are current speed, depth, rock cover.
 
 ```{r setup, include=FALSE}
 ## Load packages ---------------------------------------------------------
@@ -29,7 +29,7 @@ current <-read_csv("CurrentByDay.csv")
 abiotic <- read_csv("transectdatawithallvariables.csv")
 ```
 
-## Data
+## Data summaries
 
 ```{r data clean up, include = F}
 
@@ -102,16 +102,20 @@ data <- data %>% rename(CurrentMax = CurrentMax.x) %>% select(-CurrentMean.y, -C
 ``` {r, echo = F}
 data
 
+# make depth a categorical value 
+
+data <- data %>% mutate(TransectDepth = as.character(TransectDepth))
+
 ```
 
-## Exploratory plots of Abundance
+## Exploratory plots of abundance
 
-Current and transect depth (coloured by richness)
+### Plots of current and transect depth
 
 ```{r, fig.show="hold", out.width="50%", echo = F}
 
 # abundance and current
-ggplot(data) + geom_point(aes(CurrentMax, Abundance, colour = Richness), size = 3, show.legend = F) +
+ggplot(data) + geom_point(aes(CurrentMax, Abundance, colour = site), size = 3, show.legend = F) +
     scale_color_fish(option = "Coris_gaimard", direction = -1) +  
   theme(axis.text.x = element_text(angle = 90)) +
   xlab("Current Speed") +
@@ -120,7 +124,7 @@ ggplot(data) + geom_point(aes(CurrentMax, Abundance, colour = Richness), size = 
 
 #abundance and transect depth
 
-ggplot(data) + geom_point(aes(TransectDepth, Abundance, colour = Richness), size = 3, show.legend = F) +
+ggplot(data) + geom_point(aes(TransectDepth, Abundance, colour = site), size = 3, show.legend = F) +
     scale_color_fish(option = "Coris_gaimard", direction = -1) +  
   theme(axis.text.x = element_text(angle = 90)) +
   xlab("Transect Depth (m)") +
@@ -129,7 +133,7 @@ ggplot(data) + geom_point(aes(TransectDepth, Abundance, colour = Richness), size
 
 ```
 
-slope and rock cover
+### Plots of slope and rock cover
 
 ```{r, fig.show="hold", out.width="50%", echo = F}
 #abundance and slope
@@ -152,9 +156,11 @@ ggplot(data) + geom_point(aes(PercRock, Abundance, colour = Site), size = 3, sho
 
 ```
 
-## Same plots but of log biomass
+## Same plots but of biomass instead of abundance
 
-Current and Depth
+We are logging biomass to make the relationship more linear. 
+
+### Plots of current and depth
 
 ```{r, fig.show="hold", out.width="50%", echo = F}
 
@@ -178,7 +184,7 @@ ggplot(data) + geom_point(aes(CurrentMax, log10(Biomass), colour = Site), size =
 
 ```
 
-Slope and Rock Cover
+### Plots of slope and rock cover
 
 ```{r, fig.show="hold", out.width="50%", echo = F}
 
@@ -202,12 +208,21 @@ ggplot(data) + geom_point(aes(PercRock, log10(Biomass), colour = Site), size = 3
 
 ```
 
+# Plots of abundance, biomass, and richness
+
+Just for interest sake, I don't know if the correlation between these dependent variables is important and needs to be considered? Food for thought.
+
+```{r, fig.show="hold", out.width="50%", echo = F}
+data %>% ggplot() + geom_point(aes(Richness, Abundance))
+data %>% ggplot() + geom_point(aes(log10(Biomass), Abundance))
+
+```
 
 # Models of fish abundance
 
+In all models site is included as a random factor and there are four variables (Transect depth, max daily current, slope, percent rock). We are looking at all combinations of variables but with no interactions.
 
 ```{r abundance, echo=T}
-# hmm these don't actually look that bad haha, Lm1 is top which is not surprising as there is a ton of variation with depth in abundance
 
 #one variable
 
@@ -266,32 +281,38 @@ Lm15.ab  <- lme(Abundance ~ CurrentMax + TransectDepth + SlopeAngle + PercRock,
 
 bbmle::AICtab(Null.ab, Lm1.ab, Lm2.ab, Lm3.ab, Lm4.ab, Lm5.ab, Lm6.ab, Lm7.ab, Lm8.ab, Lm9.ab, Lm10.ab, Lm11.ab, Lm12.ab, Lm13.ab, Lm14.ab, Lm15.ab, base = T, weights = T, logLik = T)
 ```
+## Diagnositics for model 7
+
+There are three models that are within 2 AIC but we are going to explore the diagnostics of the first one (model 7) to see if it is even a decent model. 
 
 ``` {r model 7, echo = T}
 # diagnostics for Lm7.ab
 
 Lm7.ab
 
-plot(Lm7.ab) # pretty cone shaped not great
+summary(Lm7.ab)
 
-ggplot(data.frame(biomass=predict(Lm7.ab,type="link"),pearson=residuals(Lm1.ab,type="pearson")),
+plot(Lm7.ab) # pretty cone shaped which isn't great
+
+ggplot(data.frame(biomass=predict(Lm7.ab,type="link"),pearson=residuals(Lm1.ab,type="pearson")), # another way to visualize
        aes(x=biomass,y=pearson)) +
   geom_point() +
   theme_bw()
 
-qqnorm(resid(Lm7.ab))#decent
+qqnorm(resid(Lm7.ab)) #decent
 
-sjPlot::plot_model(Lm7.ab)
 ```
 
-## fitting a variance structure to Lm7.ab
+## Fitting a variance structure to model 7
+
+Because there is a pretty obvious pattern in the residuals I am going to fit a variance structure to the model to see if this fixes this problem. I'll first fit it to model 7 and then if that corrects the skew I will fit the same structure to ALL of the original model set and then compare all of the models again.
 
 ```{R, echol = F}
 
 Lm7.ab.var <- lme(Abundance ~ TransectDepth + PercRock, 
             random = ~ 1 | Site, data = data, method = "ML")
 
-Lm7.ab.var <- update(Lm7.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+Lm7.ab.var <- update(Lm7.ab, weights = varExp(form = ~fitted(.)),method = "ML") # update model 7 with an exponential variance structure
 
 Lm7.ab.var
 plot(Lm7.ab.var)
@@ -319,7 +340,7 @@ bbmle::AICtab(Null.ab.var, Lm1.ab.var, Lm2.ab.var, Lm3.ab.var, Lm4.ab.var, Lm5.a
               Lm10.ab.var, Lm11.ab.var, Lm12.ab.var, Lm13.ab.var, Lm14.ab.var, Lm15.ab.var, base = T, weights = T, logLik = T)
 ```
 
-# now looking at model 13 (TransectDepth + CurrentMax + PercRock)
+## Diagnostics for Model 13 (TransectDepth + CurrentMax + PercRock)
 
 We are looking here at model 13 but there are 3 models (13, 7 and 15) which are all within 2 delta AIC. 
 ```{R, echo = T}
@@ -426,3 +447,28 @@ sjPlot::plot_model(Lm7.bio)
 
 ```
 
+``` {r, echo = F}
+
+fishdata %>% ggplot() + geom_point(aes(TransectDepth, Length, colour = CommonName), show.legend = F)
+
+# Fit a model on all the data pooled together
+fishdata <- fishdata %>% mutate(TransectDepth = as.character(TransectDepth))
+m_pooled <- lm(Length ~ TransectDepth, fishdata) 
+
+# Repeat the intercept and slope terms for each participant
+df_pooled <- tibble(
+  Model = "Complete pooling",
+  Subject = unique(fishdata$CommonName),
+  Intercept = coef(m_pooled)[1], 
+  Slope_depth = coef(m_pooled)[2]
+)
+df_pooled
+
+
+m_partialpooled <- lme(Length ~ TransectDepth, 
+                        random = ~ 1 | CommonName, data = fishdata, method = "ML")
+
+summary(m_pooled)
+summary(m_partialpooled)
+
+```

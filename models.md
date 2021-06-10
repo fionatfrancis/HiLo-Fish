@@ -3,37 +3,37 @@ Mixed models for Hi-Lo fish analysis
 Fiona Francis
 5/19/2021
 
-This is the data analysis for Jill Campbell’s MSc chapter that
-complements the HiLo analysis for Sharon Jeffrey. This analysis examines
-the effect of current and other abiotic facotrs on fish abudnace,
-biomass and diversity at different sites in the Gulf Islands. THe data
-was collected slightly differently thant the invertebrate data so the
-the number of points and sites differ betweent the two studies. This
-project also invovles collaboration with Sharon Jeffery, Sarah Dudas and
-Francis Juanes.
+These are the data analyses for Jill Campbell’s MSc chapter that
+complements the HiLo analysis for Sharon Jeffrey’s invert data. This
+analysis examines the effect of current and other abiotic factors on
+fish abundance, biomass, and diversity at different sites in the Gulf
+Islands. THe data was collected slightly differently than the
+invertebrate data so the number of points and sites differ between the
+two studies. This project also involvles collaborators Sharon Jeffery
+(DFO), Sarah Dudas(DFO), and Francis Juanes(Uvic).
 
 Jill used a total of 10 sites and recorded fish on transects at two
-deptsh: 3 m and 15 m. Each site was visited 3 or 4 times over the
-season. Current speed was measured at each site over the course of one
-month and the analyses use the mean daily max current measures. Site
-will be included as a random effect in models. Abiotic factors are
+depths at each site: 3 m and 15 m. Each site was visited 3 or 4 times
+over the season. Current speed was measured at each site over the course
+of one month and the analyses use the mean daily max current measures.
+Site will be included as a random effect in models. Abiotic factors are
 current speed, depth, rock cover.
 
 ## Data
 
     ## # A tibble: 69 x 18
-    ##    Site  CurrentMax CurrentMean.x Hi_Lo TransectDepth CurrDepth Replicate
-    ##    <chr>      <dbl>         <dbl> <chr>         <dbl> <chr>         <dbl>
-    ##  1 Porl~       117.          64.0 High              3 High 3m           1
-    ##  2 Porl~       117.          64.0 High              3 High 3m           2
-    ##  3 Porl~       117.          64.0 High              3 High 3m           3
-    ##  4 Porl~       117.          64.0 High             15 High 15m          1
-    ##  5 Porl~       117.          64.0 High             15 High 15m          2
-    ##  6 Porl~       117.          64.0 High             15 High 15m          3
-    ##  7 Grai~       114.          19.6 High              3 High 3m           1
-    ##  8 Grai~       114.          19.6 High              3 High 3m           2
-    ##  9 Grai~       114.          19.6 High              3 High 3m           3
-    ## 10 Grai~       114.          19.6 High             15 High 15m          1
+    ##    Site     CurrentMax CurrentMean.x Hi_Lo TransectDepth CurrDepth Replicate
+    ##    <chr>         <dbl>         <dbl> <chr>         <dbl> <chr>         <dbl>
+    ##  1 Porlier        117.          64.0 High              3 High 3m           1
+    ##  2 Porlier        117.          64.0 High              3 High 3m           2
+    ##  3 Porlier        117.          64.0 High              3 High 3m           3
+    ##  4 Porlier        117.          64.0 High             15 High 15m          1
+    ##  5 Porlier        117.          64.0 High             15 High 15m          2
+    ##  6 Porlier        117.          64.0 High             15 High 15m          3
+    ##  7 Grainger       114.          19.6 High              3 High 3m           1
+    ##  8 Grainger       114.          19.6 High              3 High 3m           2
+    ##  9 Grainger       114.          19.6 High              3 High 3m           3
+    ## 10 Grainger       114.          19.6 High             15 High 15m          1
     ## # ... with 59 more rows, and 11 more variables: TransectID <chr>,
     ## #   Richness <dbl>, Abundance <dbl>, Biomass <dbl>, Biomass_kg <dbl>,
     ## #   SlopeAngle <dbl>, PercRock <dbl>, CurrentMin <dbl>, MedianMax <dbl>,
@@ -45,7 +45,7 @@ Current and transect depth (coloured by richness)
 
 <img src="models_files/figure-gfm/unnamed-chunk-2-1.png" width="50%" /><img src="models_files/figure-gfm/unnamed-chunk-2-2.png" width="50%" />
 
-slope and rock cover
+Plots of Slope and rock cover
 
 <img src="models_files/figure-gfm/unnamed-chunk-3-1.png" width="50%" /><img src="models_files/figure-gfm/unnamed-chunk-3-2.png" width="50%" />
 
@@ -59,11 +59,13 @@ Slope and Rock Cover
 
 <img src="models_files/figure-gfm/unnamed-chunk-5-1.png" width="50%" /><img src="models_files/figure-gfm/unnamed-chunk-5-2.png" width="50%" />
 
-# Models of fish abundance
+# Models of Fish Abundance
+
+In all models site is included as a random factor and there are four
+variables (Transect depth, max daily current, slope, percent rock). We
+are looking at all combinations of variables but with no interactions.
 
 ``` r
-# hmm these don't actually look that bad haha, Lm1 is top which is not surprising as there is a ton of variation with depth in abundance
-
 #one variable
 
 Null.ab <- lme(Abundance ~ 1, 
@@ -140,6 +142,12 @@ bbmle::AICtab(Null.ab, Lm1.ab, Lm2.ab, Lm3.ab, Lm4.ab, Lm5.ab, Lm6.ab, Lm7.ab, L
     ## Lm8.ab  -295.1  600.3    0.5    33.4 5  <0.001
     ## Lm11.ab -294.5  601.0    1.1    34.2 6  <0.001
 
+## Diagnositics for Model 7
+
+There are three models that are within 2 AIC but we are going to explore
+the diagnostics of the first one (model 7) to see if it is even a decent
+model.
+
 ``` r
 # diagnostics for Lm7.ab
 
@@ -162,13 +170,13 @@ Lm7.ab
     ## Number of Groups: 10
 
 ``` r
-plot(Lm7.ab) # pretty cone shaped not great
+plot(Lm7.ab) # pretty cone shaped which isn't great
 ```
 
 ![](models_files/figure-gfm/model%207-1.png)<!-- -->
 
 ``` r
-ggplot(data.frame(biomass=predict(Lm7.ab,type="link"),pearson=residuals(Lm1.ab,type="pearson")),
+ggplot(data.frame(biomass=predict(Lm7.ab,type="link"),pearson=residuals(Lm1.ab,type="pearson")), # another way to visualize
        aes(x=biomass,y=pearson)) +
   geom_point() +
   theme_bw()
@@ -177,24 +185,24 @@ ggplot(data.frame(biomass=predict(Lm7.ab,type="link"),pearson=residuals(Lm1.ab,t
 ![](models_files/figure-gfm/model%207-2.png)<!-- -->
 
 ``` r
-qqnorm(resid(Lm7.ab))#decent
+qqnorm(resid(Lm7.ab)) #decent
 ```
 
 ![](models_files/figure-gfm/model%207-3.png)<!-- -->
 
-``` r
-sjPlot::plot_model(Lm7.ab)
-```
+## Fitting a variance structure to Lm7.ab
 
-![](models_files/figure-gfm/model%207-4.png)<!-- -->
-
-## fitting a variance structure to Lm7.ab
+Because there is a pretty obvious pattern in the residuals I am going to
+fit a variance structure to the model to see if this fixes this problem.
+I’ll first fit it to model 7 and then if that corrects the skew I will
+fit the same structure to ALL of the original model set and then compare
+all of the models again.
 
 ``` r
 Lm7.ab.var <- lme(Abundance ~ TransectDepth + PercRock, 
             random = ~ 1 | Site, data = data, method = "ML")
 
-Lm7.ab.var <- update(Lm7.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+Lm7.ab.var <- update(Lm7.ab, weights = varExp(form = ~fitted(.)),method = "ML") # update model 7 with an exponential variance structure
 
 Lm7.ab.var
 ```
@@ -273,7 +281,7 @@ bbmle::AICtab(Null.ab.var, Lm1.ab.var, Lm2.ab.var, Lm3.ab.var, Lm4.ab.var, Lm5.a
     ## Lm11.ab.var -293.6  601.2    2.0    50.7 7  <0.001
     ## Lm8.ab.var  -294.8  601.7    0.8    51.2 6  <0.001
 
-# now looking at model 13 (TransectDepth + CurrentMax + PercRock)
+## Diagnostics for Model 13 (TransectDepth + CurrentMax + PercRock)
 
 We are looking here at model 13 but there are 3 models (13, 7 and 15)
 which are all within 2 delta AIC.
@@ -310,7 +318,7 @@ summary(Lm13.ab.var)
 ```
 
     ## Linear mixed-effects model fit by maximum likelihood
-    ##  Data: data 
+    ##   Data: data 
     ##        AIC      BIC    logLik
     ##   550.4592 566.0979 -268.2296
     ## 
@@ -325,7 +333,7 @@ summary(Lm13.ab.var)
     ##  Parameter estimates:
     ##      expon 
     ## 0.04262456 
-    ## Fixed effects: Abundance ~ TransectDepth + CurrentMax + PercRock 
+    ## Fixed effects:  Abundance ~ TransectDepth + CurrentMax + PercRock 
     ##                    Value Std.Error DF   t-value p-value
     ## (Intercept)   -21.815039  8.629793 57 -2.527875  0.0143
     ## TransectDepth   1.943926  0.293078 57  6.632805  0.0000
