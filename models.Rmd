@@ -115,8 +115,8 @@ data <- data %>% mutate(TransectDepth = as.character(TransectDepth))
 ```{r, fig.show="hold", out.width="50%", echo = F}
 
 # abundance and current
-ggplot(data) + geom_point(aes(CurrentMax, Abundance, colour = site), size = 3, show.legend = F) +
-    scale_color_fish(option = "Coris_gaimard", direction = -1) +  
+ggplot(data) + geom_point(aes(CurrentMax, Abundance, colour = Site), size = 3, show.legend = F) +
+    scale_color_fish_d(option = "Coris_gaimard", direction = -1) +  
   theme(axis.text.x = element_text(angle = 90)) +
   xlab("Current Speed") +
   ylab("Abundance of fish") + 
@@ -124,8 +124,8 @@ ggplot(data) + geom_point(aes(CurrentMax, Abundance, colour = site), size = 3, s
 
 #abundance and transect depth
 
-ggplot(data) + geom_point(aes(TransectDepth, Abundance, colour = site), size = 3, show.legend = F) +
-    scale_color_fish(option = "Coris_gaimard", direction = -1) +  
+ggplot(data) + geom_point(aes(TransectDepth, Abundance, colour = Site), size = 3, show.legend = F) +
+    scale_color_fish_d(option = "Coris_gaimard", direction = -1) +  
   theme(axis.text.x = element_text(angle = 90)) +
   xlab("Transect Depth (m)") +
   ylab("Abundance of fish")+ 
@@ -447,28 +447,148 @@ sjPlot::plot_model(Lm7.bio)
 
 ```
 
+
+# Models of fish species richness
+
+In all models site is included as a random factor and there are four variables (Transect depth, max daily current, slope, percent rock). We are looking at all combinations of variables but with no interactions.
+
+```{r richness, echo=T}
+
+#one variable
+
+Null.r <- lme(Richness ~ 1, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm1.r <-  lme(Richness ~ TransectDepth, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm2.r <-  lme(Richness ~ CurrentMax,
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm3.r <- lme(Richness ~ SlopeAngle,
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm4.r <- lme(Richness ~ PercRock,
+            random = ~ 1 | Site, data = data, method = "ML")
+
+#two variables
+
+Lm5.r  <- lme(Richness ~ TransectDepth + CurrentMax, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm6.r  <- lme(Richness ~ TransectDepth + SlopeAngle, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm7.r  <- lme(Richness ~ TransectDepth + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm8.r  <- lme(Richness ~ SlopeAngle + CurrentMax, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm9.r  <- lme(Richness ~ SlopeAngle + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm10.r  <- lme(Richness ~ PercRock + CurrentMax, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+#Three variables
+Lm11.r  <- lme(Richness ~ CurrentMax + SlopeAngle + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm12.r  <- lme(Richness ~ TransectDepth + SlopeAngle + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm13.r  <- lme(Richness ~ TransectDepth + CurrentMax + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm14.r  <- lme(Richness ~ TransectDepth + CurrentMax + SlopeAngle, 
+            random = ~ 1 | Site, data = data, method = "ML")
+# four variables
+
+Lm15.r  <- lme(Richness ~ CurrentMax + TransectDepth + SlopeAngle + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+
+bbmle::AICtab(Null.r, Lm1.r, Lm2.r, Lm3.r, Lm4.r, Lm5.r, Lm6.r, Lm7.r, Lm8.r, Lm9.r, Lm10.r, Lm11.r, Lm12.r, Lm13.r, Lm14.r, Lm15.r, base = T, weights = T, logLik = T)
+
+plot(Lm7.r)
+
+qqnorm(resid(Lm7.r))
+
+```
+
+
+## Length and depth relationships
+
+Jill is interested in understanding how fish length changes in relation to species and in relation to depth. Are some species larger at deeper depths than others despite species differences? 
+
+I think that this can be modeled in two ways. 
+
+1) we fit a random effect for species where the slopes and intercepts vary by species to see if there is an overal effect of depth on fish size. I don't think that we need to worry about site ID as there would be no reason to expect fish to have different life history traits at different sites (would there)?
+
+2) we can then look at species that have enough data to see how there are specific species that have a relationship with depth by fitting species as a fixed effect
+
+
 ``` {r, echo = F}
 
-fishdata %>% ggplot() + geom_point(aes(TransectDepth, Length, colour = CommonName), show.legend = F)
 
 # Fit a model on all the data pooled together
 fishdata <- fishdata %>% mutate(TransectDepth = as.character(TransectDepth))
-m_pooled <- lm(Length ~ TransectDepth, fishdata) 
 
-# Repeat the intercept and slope terms for each participant
+fishdata <- fishdata %>% mutate(TransectDepth = recode(TransectDepth, '15' = "B", '3' = "A")) # changed these so that they would show up with 3 m as base since it is alphabetical in the model coefficients
+
+fishdata <- fishdata %>% arrange(TransectDepth)
+
+fishdata %>% ggplot() + geom_point(aes(TransectDepth, Length, colour = CommonName), show.legend = F)
+
+fishdata %>% group_by(CommonName, Species) %>% summarise(n = n()) %>% print(n = Inf)
+
+# running a random effect for fish species
+null <- lme(log10(Length) ~ 1, 
+            random = ~ 1 + TransectDepth| CommonName, data = fishdata, method = "ML")
+
+m_partialpooled <- lme(log10(Length) ~ TransectDepth, 
+                        random = ~ 1 + TransectDepth| CommonName, data = fishdata, method = "ML")
+
+bbmle::AICtab(null, m_partialpooled, base = T, weights = T, logLik = T)
+
+# summary of random effects model
+summary(m_partialpooled)
+
+plot(m_partialpooled)
+qqnorm(resid(m_partialpooled))
+
+
+
+#pull out the mean for each species from model
+df_partial_pooling <- coef(m_partialpooled) %>% 
+  as_tibble() %>% 
+  rename(Intercept = `(Intercept)`, deep_depth = TransectDepthB) %>% 
+  add_column(Model = "Partial pooling") %>% add_column(Subject = sort(unique(fishdata$CommonName)))
+
+# pull out overall coefficient for depth 
+
+coef(summary(m_partialpooled))
+
+# Repeat the mean for each species
 df_pooled <- tibble(
   Model = "Complete pooling",
   Subject = unique(fishdata$CommonName),
-  Intercept = coef(m_pooled)[1], 
-  Slope_depth = coef(m_pooled)[2]
+  Intercept = coef(summary(m_partialpooled))[1], 
+  deep_depth = coef(summary(m_partialpooled))[2]
 )
 df_pooled
 
 
-m_partialpooled <- lme(Length ~ TransectDepth, 
-                        random = ~ 1 | CommonName, data = fishdata, method = "ML")
+# combine coefficients for plotting 
 
-summary(m_pooled)
-summary(m_partialpooled)
+df_models <- left_join(df_pooled, df_partial_pooling, by = "Subject")
+
+# quick and direty plot of coefficients
+df_models %>% ggplot() + geom_point(aes(Intercept.x, Subject), colour = "grey") + geom_point(aes((Intercept.x+deep_depth.x), Subject), colour = "pink") +
+  geom_point(aes((Intercept.y+deep_depth.y), Subject), colour = "red", size = 2) + geom_point(aes(Intercept.y, Subject), colour = "black", size = 2) + 
+  xlab("log mean Length") +
+  ylab("Fish species")+ 
+  theme_bw()
 
 ```

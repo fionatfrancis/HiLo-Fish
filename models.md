@@ -1,4 +1,4 @@
-Mixed models for Hi-Lo fish analysis
+Mixed models for hi-Lo fish analysis
 ================
 Fiona Francis
 5/19/2021
@@ -19,7 +19,7 @@ of one month and the analyses use the mean daily max current measures.
 Site will be included as a random effect in models. Abiotic factors are
 current speed, depth, rock cover.
 
-## Data
+## Data summaries
 
     ## # A tibble: 69 x 18
     ##    Site     CurrentMax CurrentMean.x Hi_Lo TransectDepth CurrDepth Replicate
@@ -39,27 +39,37 @@ current speed, depth, rock cover.
     ## #   SlopeAngle <dbl>, PercRock <dbl>, CurrentMin <dbl>, MedianMax <dbl>,
     ## #   meanCurrentSD <dbl>, maxCurrentSD <dbl>
 
-## Exploratory plots of Abundance
+## Exploratory plots of abundance
 
-Current and transect depth (coloured by richness)
+### Plots of current and transect depth
 
 <img src="models_files/figure-gfm/unnamed-chunk-2-1.png" width="50%" /><img src="models_files/figure-gfm/unnamed-chunk-2-2.png" width="50%" />
 
-Plots of Slope and rock cover
+### Plots of slope and rock cover
 
 <img src="models_files/figure-gfm/unnamed-chunk-3-1.png" width="50%" /><img src="models_files/figure-gfm/unnamed-chunk-3-2.png" width="50%" />
 
-## Same plots but of log biomass
+## Same plots but of biomass instead of abundance
 
-Current and Depth
+We are logging biomass to make the relationship more linear.
+
+### Plots of current and depth
 
 <img src="models_files/figure-gfm/unnamed-chunk-4-1.png" width="50%" /><img src="models_files/figure-gfm/unnamed-chunk-4-2.png" width="50%" />
 
-Slope and Rock Cover
+### Plots of slope and rock cover
 
 <img src="models_files/figure-gfm/unnamed-chunk-5-1.png" width="50%" /><img src="models_files/figure-gfm/unnamed-chunk-5-2.png" width="50%" />
 
-# Models of Fish Abundance
+# Plots of abundance, biomass, and richness
+
+Just for interest sake, I don’t know if the correlation between these
+dependent variables is important and needs to be considered? Food for
+thought.
+
+<img src="models_files/figure-gfm/unnamed-chunk-6-1.png" width="50%" /><img src="models_files/figure-gfm/unnamed-chunk-6-2.png" width="50%" />
+
+# Models of fish abundance
 
 In all models site is included as a random factor and there are four
 variables (Transect depth, max daily current, slope, percent rock). We
@@ -142,7 +152,7 @@ bbmle::AICtab(Null.ab, Lm1.ab, Lm2.ab, Lm3.ab, Lm4.ab, Lm5.ab, Lm6.ab, Lm7.ab, L
     ## Lm8.ab  -295.1  600.3    0.5    33.4 5  <0.001
     ## Lm11.ab -294.5  601.0    1.1    34.2 6  <0.001
 
-## Diagnositics for Model 7
+## Diagnositics for model 7
 
 There are three models that are within 2 AIC but we are going to explore
 the diagnostics of the first one (model 7) to see if it is even a decent
@@ -158,13 +168,44 @@ Lm7.ab
     ##   Data: data 
     ##   Log-likelihood: -278.4377
     ##   Fixed: Abundance ~ TransectDepth + PercRock 
-    ##   (Intercept) TransectDepth      PercRock 
-    ##   -19.3670215     1.8130084     0.2947264 
+    ##    (Intercept) TransectDepth3       PercRock 
+    ##      7.8281051    -21.7561013      0.2947264 
     ## 
     ## Random effects:
     ##  Formula: ~1 | Site
     ##         (Intercept) Residual
     ## StdDev:    2.061944 13.53999
+    ## 
+    ## Number of Observations: 69
+    ## Number of Groups: 10
+
+``` r
+summary(Lm7.ab)
+```
+
+    ## Linear mixed-effects model fit by maximum likelihood
+    ##   Data: data 
+    ##        AIC     BIC    logLik
+    ##   566.8754 578.046 -278.4377
+    ## 
+    ## Random effects:
+    ##  Formula: ~1 | Site
+    ##         (Intercept) Residual
+    ## StdDev:    2.061944 13.53999
+    ## 
+    ## Fixed effects:  Abundance ~ TransectDepth + PercRock 
+    ##                     Value Std.Error DF   t-value p-value
+    ## (Intercept)      7.828105  9.235819 57  0.847581  0.4002
+    ## TransectDepth3 -21.756101  3.413470 57 -6.373603  0.0000
+    ## PercRock         0.294726  0.101549 57  2.902300  0.0053
+    ##  Correlation: 
+    ##                (Intr) TrnsD3
+    ## TransectDepth3  0.033       
+    ## PercRock       -0.965 -0.214
+    ## 
+    ## Standardized Within-Group Residuals:
+    ##         Min          Q1         Med          Q3         Max 
+    ## -2.14378970 -0.60305184 -0.07379848  0.40969801  3.11518620 
     ## 
     ## Number of Observations: 69
     ## Number of Groups: 10
@@ -190,7 +231,7 @@ qqnorm(resid(Lm7.ab)) #decent
 
 ![](models_files/figure-gfm/model%207-3.png)<!-- -->
 
-## Fitting a variance structure to Lm7.ab
+## Fitting a variance structure to model 7
 
 Because there is a pretty obvious pattern in the residuals I am going to
 fit a variance structure to the model to see if this fixes this problem.
@@ -211,13 +252,13 @@ Lm7.ab.var
     ##   Data: data 
     ##   Log-likelihood: -270.0596
     ##   Fixed: Abundance ~ TransectDepth + PercRock 
-    ##   (Intercept) TransectDepth      PercRock 
-    ##   -22.5460739     1.8882487     0.3180642 
+    ##    (Intercept) TransectDepth3       PercRock 
+    ##      5.7776564    -22.6589837      0.3180642 
     ## 
     ## Random effects:
     ##  Formula: ~1 | Site
     ##         (Intercept) Residual
-    ## StdDev:    4.317864 4.290941
+    ## StdDev:    4.317863 4.290941
     ## 
     ## Variance function:
     ##  Structure: Exponential of variance covariate
@@ -232,13 +273,13 @@ Lm7.ab.var
 plot(Lm7.ab.var)
 ```
 
-![](models_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+![](models_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
 ``` r
 qqnorm(Lm7.ab.var)
 ```
 
-![](models_files/figure-gfm/unnamed-chunk-6-2.png)<!-- -->
+![](models_files/figure-gfm/unnamed-chunk-7-2.png)<!-- -->
 
 ``` r
 # rerun all models with new variance structure
@@ -296,8 +337,8 @@ Lm13.ab.var
     ##   Data: data 
     ##   Log-likelihood: -268.2296
     ##   Fixed: Abundance ~ TransectDepth + CurrentMax + PercRock 
-    ##   (Intercept) TransectDepth    CurrentMax      PercRock 
-    ##  -21.81503938    1.94392625   -0.06542779    0.34703008 
+    ##    (Intercept) TransectDepth3     CurrentMax       PercRock 
+    ##     7.34385454   -23.32711495    -0.06542779     0.34703007 
     ## 
     ## Random effects:
     ##  Formula: ~1 | Site
@@ -334,20 +375,20 @@ summary(Lm13.ab.var)
     ##      expon 
     ## 0.04262456 
     ## Fixed effects:  Abundance ~ TransectDepth + CurrentMax + PercRock 
-    ##                    Value Std.Error DF   t-value p-value
-    ## (Intercept)   -21.815039  8.629793 57 -2.527875  0.0143
-    ## TransectDepth   1.943926  0.293078 57  6.632805  0.0000
-    ## CurrentMax     -0.065428  0.038570  8 -1.696332  0.1283
-    ## PercRock        0.347030  0.087101 57  3.984239  0.0002
+    ##                     Value Std.Error DF   t-value p-value
+    ## (Intercept)      7.343855  6.882005 57  1.067110  0.2904
+    ## TransectDepth3 -23.327115  3.516930 57 -6.632805  0.0000
+    ## CurrentMax      -0.065428  0.038570  8 -1.696332  0.1283
+    ## PercRock         0.347030  0.087101 57  3.984239  0.0002
     ##  Correlation: 
-    ##               (Intr) TrnscD CrrntM
-    ## TransectDepth -0.612              
-    ## CurrentMax    -0.040 -0.042       
-    ## PercRock      -0.934  0.496 -0.232
+    ##                (Intr) TrnsD3 CrrntM
+    ## TransectDepth3  0.129              
+    ## CurrentMax     -0.078  0.042       
+    ## PercRock       -0.854 -0.496 -0.232
     ## 
     ## Standardized Within-Group Residuals:
     ##         Min          Q1         Med          Q3         Max 
-    ## -1.82504777 -0.77554621 -0.02917263  0.56913152  2.71370048 
+    ## -1.82504777 -0.77554621 -0.02917263  0.56913154  2.71370049 
     ## 
     ## Number of Observations: 69
     ## Number of Groups: 10
@@ -356,7 +397,7 @@ summary(Lm13.ab.var)
 plot(Lm13.ab.var)
 ```
 
-![](models_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+![](models_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
 ``` r
 ggplot(data.frame(biomass=predict(Lm13.ab.var,type="link"),pearson=residuals(Lm13.ab.var,type="pearson")),
@@ -365,19 +406,19 @@ ggplot(data.frame(biomass=predict(Lm13.ab.var,type="link"),pearson=residuals(Lm1
   theme_bw()
 ```
 
-![](models_files/figure-gfm/unnamed-chunk-7-2.png)<!-- -->
+![](models_files/figure-gfm/unnamed-chunk-8-2.png)<!-- -->
 
 ``` r
 qqnorm(resid(Lm13.ab.var))
 ```
 
-![](models_files/figure-gfm/unnamed-chunk-7-3.png)<!-- -->
+![](models_files/figure-gfm/unnamed-chunk-8-3.png)<!-- -->
 
 ``` r
 sjPlot::plot_model(Lm13.ab.var)
 ```
 
-![](models_files/figure-gfm/unnamed-chunk-7-4.png)<!-- -->
+![](models_files/figure-gfm/unnamed-chunk-8-4.png)<!-- -->
 
 # Models of fish biomass
 
@@ -405,8 +446,8 @@ sjPlot::plot_model(Lm13.ab.var)
     ##   Data: data 
     ##   Log-likelihood: -95.94696
     ##   Fixed: log10(Biomass) ~ TransectDepth 
-    ##   (Intercept) TransectDepth 
-    ##    2.30042295    0.05074164 
+    ##    (Intercept) TransectDepth3 
+    ##      3.0615475     -0.6088996 
     ## 
     ## Random effects:
     ##  Formula: ~1 | Site
@@ -416,4 +457,206 @@ sjPlot::plot_model(Lm13.ab.var)
     ## Number of Observations: 69
     ## Number of Groups: 10
 
-![](models_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->![](models_files/figure-gfm/unnamed-chunk-8-2.png)<!-- -->![](models_files/figure-gfm/unnamed-chunk-8-3.png)<!-- -->![](models_files/figure-gfm/unnamed-chunk-8-4.png)<!-- -->![](models_files/figure-gfm/unnamed-chunk-8-5.png)<!-- -->![](models_files/figure-gfm/unnamed-chunk-8-6.png)<!-- -->
+![](models_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->![](models_files/figure-gfm/unnamed-chunk-9-2.png)<!-- -->![](models_files/figure-gfm/unnamed-chunk-9-3.png)<!-- -->![](models_files/figure-gfm/unnamed-chunk-9-4.png)<!-- -->![](models_files/figure-gfm/unnamed-chunk-9-5.png)<!-- -->![](models_files/figure-gfm/unnamed-chunk-9-6.png)<!-- -->
+
+# Models of fish species richness
+
+In all models site is included as a random factor and there are four
+variables (Transect depth, max daily current, slope, percent rock). We
+are looking at all combinations of variables but with no interactions.
+
+``` r
+#one variable
+
+Null.r <- lme(Richness ~ 1, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm1.r <-  lme(Richness ~ TransectDepth, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm2.r <-  lme(Richness ~ CurrentMax,
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm3.r <- lme(Richness ~ SlopeAngle,
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm4.r <- lme(Richness ~ PercRock,
+            random = ~ 1 | Site, data = data, method = "ML")
+
+#two variables
+
+Lm5.r  <- lme(Richness ~ TransectDepth + CurrentMax, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm6.r  <- lme(Richness ~ TransectDepth + SlopeAngle, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm7.r  <- lme(Richness ~ TransectDepth + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm8.r  <- lme(Richness ~ SlopeAngle + CurrentMax, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm9.r  <- lme(Richness ~ SlopeAngle + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm10.r  <- lme(Richness ~ PercRock + CurrentMax, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+#Three variables
+Lm11.r  <- lme(Richness ~ CurrentMax + SlopeAngle + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm12.r  <- lme(Richness ~ TransectDepth + SlopeAngle + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm13.r  <- lme(Richness ~ TransectDepth + CurrentMax + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+Lm14.r  <- lme(Richness ~ TransectDepth + CurrentMax + SlopeAngle, 
+            random = ~ 1 | Site, data = data, method = "ML")
+# four variables
+
+Lm15.r  <- lme(Richness ~ CurrentMax + TransectDepth + SlopeAngle + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+
+bbmle::AICtab(Null.r, Lm1.r, Lm2.r, Lm3.r, Lm4.r, Lm5.r, Lm6.r, Lm7.r, Lm8.r, Lm9.r, Lm10.r, Lm11.r, Lm12.r, Lm13.r, Lm14.r, Lm15.r, base = T, weights = T, logLik = T)
+```
+
+    ##        logLik AIC    dLogLik dAIC   df weight
+    ## Lm7.r  -122.2  254.5    7.4     0.0 5  0.2786
+    ## Lm1.r  -123.4  254.8    6.2     0.3 4  0.2414
+    ## Lm13.r -122.1  256.2    7.5     1.7 6  0.1173
+    ## Lm12.r -122.2  256.5    7.4     2.0 6  0.1036
+    ## Lm5.r  -123.4  256.7    6.3     2.3 5  0.0904
+    ## Lm6.r  -123.4  256.8    6.2     2.3 5  0.0888
+    ## Lm15.r -122.1  258.2    7.5     3.7 7  0.0432
+    ## Lm14.r -123.4  258.7    6.3     4.3 6  0.0333
+    ## Null.r -129.6  265.3    0.0    10.8 3  0.0013
+    ## Lm4.r  -129.5  266.9    0.2    12.4 4  <0.001
+    ## Lm2.r  -129.6  267.2    0.0    12.7 4  <0.001
+    ## Lm3.r  -129.6  267.3    0.0    12.8 4  <0.001
+    ## Lm10.r -129.4  268.8    0.3    14.3 5  <0.001
+    ## Lm9.r  -129.5  268.9    0.2    14.4 5  <0.001
+    ## Lm8.r  -129.6  269.2    0.0    14.7 5  <0.001
+    ## Lm11.r -129.4  270.8    0.3    16.3 6  <0.001
+
+``` r
+plot(Lm7.r)
+```
+
+![](models_files/figure-gfm/richness-1.png)<!-- -->
+
+``` r
+qqnorm(resid(Lm7.r))
+```
+
+![](models_files/figure-gfm/richness-2.png)<!-- -->
+
+## Length and depth relationships
+
+Jill is interested in understanding how fish length changes in relation
+to species and in relation to depth. Are some species larger at deeper
+depths than others despite species differences?
+
+I think that this can be modeled in two ways.
+
+1.  we fit a random effect for species where the slopes and intercepts
+    vary by species to see if there is an overal effect of depth on fish
+    size. I don’t think that we need to worry about site ID as there
+    would be no reason to expect fish to have different life history
+    traits at different sites (would there)?
+
+2.  we can then look at species that have enough data to see how there
+    are specific species that have a relationship with depth by fitting
+    species as a fixed effect
+
+![](models_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+
+    ## `summarise()` has grouped output by 'CommonName'. You can override using the `.groups` argument.
+
+    ## # A tibble: 25 x 3
+    ## # Groups:   CommonName [25]
+    ##    CommonName             Species            n
+    ##    <chr>                  <chr>          <int>
+    ##  1 Blackeye Goby          nicholsii        776
+    ##  2 Brown Rockfish         auriculatus        3
+    ##  3 Buffalo Sculpin        bison              1
+    ##  4 Cockscomb Gunnel       sp.                6
+    ##  5 Copper Rockfish        caurinus          86
+    ##  6 Crescent Gunnel        laeta              7
+    ##  7 Decorated Warbonnet    decoratus          2
+    ##  8 Grunt Sculpin          richardsonii       4
+    ##  9 Kelp Clingfish         muscarum           1
+    ## 10 Kelp Greenling         decagrammus       68
+    ## 11 Ling Cod               elongatus          9
+    ## 12 Longfin Gunnel         clemensi           1
+    ## 13 Longfin Sculpin        zonope           153
+    ## 14 Mosshead Warbonnet     nugator            7
+    ## 15 Northern Clingfish     maeandricus        5
+    ## 16 Padded Sculpin         fenestralis        8
+    ## 17 Painted Greenling      pictus            19
+    ## 18 Pipefish               leptorhynchus      1
+    ## 19 Quillback Rockfish     maliger           12
+    ## 20 Red Irish Lord         hemilepidotus      7
+    ## 21 Sailfin Sculpin        oculofasciatus     6
+    ## 22 Scalyhead Sculpin      harringtoni      459
+    ## 23 Speckled Sanddab       stigmaeus          3
+    ## 24 Whitespotted Greenling stelleri           6
+    ## 25 Yellowtail Rockfish    flavidus           3
+
+    ##                 logLik  AIC     dLogLik dAIC    df weight
+    ## m_partialpooled   720.5 -1428.9     2.3     0.0 6  0.79  
+    ## null              718.2 -1426.3     0.0     2.6 5  0.21
+
+    ## Linear mixed-effects model fit by maximum likelihood
+    ##   Data: fishdata 
+    ##         AIC       BIC   logLik
+    ##   -1428.937 -1396.475 720.4686
+    ## 
+    ## Random effects:
+    ##  Formula: ~1 + TransectDepth | CommonName
+    ##  Structure: General positive-definite, Log-Cholesky parametrization
+    ##                StdDev     Corr  
+    ## (Intercept)    0.19672368 (Intr)
+    ## TransectDepthB 0.07861856 0.932 
+    ## Residual       0.15258146       
+    ## 
+    ## Fixed effects:  log10(Length) ~ TransectDepth 
+    ##                    Value  Std.Error   DF   t-value p-value
+    ## (Intercept)    0.9366931 0.04231252 1627 22.137493  0.0000
+    ## TransectDepthB 0.0474807 0.02166287 1627  2.191799  0.0285
+    ##  Correlation: 
+    ##                (Intr)
+    ## TransectDepthB 0.581 
+    ## 
+    ## Standardized Within-Group Residuals:
+    ##        Min         Q1        Med         Q3        Max 
+    ## -4.3353095 -0.4227340  0.2456533  0.6450689  4.5871922 
+    ## 
+    ## Number of Observations: 1653
+    ## Number of Groups: 25
+
+![](models_files/figure-gfm/unnamed-chunk-10-2.png)<!-- -->![](models_files/figure-gfm/unnamed-chunk-10-3.png)<!-- -->
+
+    ##                     Value  Std.Error   DF   t-value      p-value
+    ## (Intercept)    0.93669306 0.04231252 1627 22.137493 3.903412e-95
+    ## TransectDepthB 0.04748066 0.02166287 1627  2.191799 2.853529e-02
+
+    ## # A tibble: 25 x 4
+    ##    Model            Subject                Intercept deep_depth
+    ##    <chr>            <chr>                      <dbl>      <dbl>
+    ##  1 Complete pooling Scalyhead Sculpin          0.937     0.0475
+    ##  2 Complete pooling Blackeye Goby              0.937     0.0475
+    ##  3 Complete pooling Longfin Sculpin            0.937     0.0475
+    ##  4 Complete pooling Northern Clingfish         0.937     0.0475
+    ##  5 Complete pooling Padded Sculpin             0.937     0.0475
+    ##  6 Complete pooling Pipefish                   0.937     0.0475
+    ##  7 Complete pooling Copper Rockfish            0.937     0.0475
+    ##  8 Complete pooling Kelp Greenling             0.937     0.0475
+    ##  9 Complete pooling Whitespotted Greenling     0.937     0.0475
+    ## 10 Complete pooling Sailfin Sculpin            0.937     0.0475
+    ## # ... with 15 more rows
+
+![](models_files/figure-gfm/unnamed-chunk-10-4.png)<!-- -->
