@@ -105,6 +105,7 @@ data
 # make depth a categorical value 
 
 data <- data %>% mutate(TransectDepth = as.character(TransectDepth))
+data <- data %>% mutate(TransectDepth = recode(TransectDepth, '15' = "B", '3' = "A"))
 
 ```
 
@@ -336,7 +337,7 @@ Lm13.ab.var <- update(Lm13.ab, weights = varExp(form = ~fitted(.)),method = "ML"
 Lm14.ab.var <- update(Lm14.ab, weights = varExp(form = ~fitted(.)),method = "ML")
 Lm15.ab.var <- update(Lm15.ab, weights = varExp(form = ~fitted(.)),method = "ML")
 
-bbmle::AICtab(Null.ab.var, Lm1.ab.var, Lm2.ab.var, Lm3.ab.var, Lm4.ab.var, Lm5.ab.var, Lm6.ab.var, Lm7.ab.var, Lm8.ab.var, Lm9.ab.var, 
+bbmle::AICctab(Null.ab.var, Lm1.ab.var, Lm2.ab.var, Lm3.ab.var, Lm4.ab.var, Lm5.ab.var, Lm6.ab.var, Lm7.ab.var, Lm8.ab.var, Lm9.ab.var, 
               Lm10.ab.var, Lm11.ab.var, Lm12.ab.var, Lm13.ab.var, Lm14.ab.var, Lm15.ab.var, base = T, weights = T, logLik = T)
 ```
 
@@ -361,6 +362,10 @@ qqnorm(resid(Lm13.ab.var))
 
 
 sjPlot::plot_model(Lm13.ab.var)
+
+# make a plot for discussion with larger group
+
+sjPlot::plot_model(Lm15.ab.var, sort.est = TRUE, show.values = T, dot.size = 3, colors = "Accent", theme = theme_bw())
 
 ```
 
@@ -420,10 +425,10 @@ Lm14.bio  <- lme(log10(Biomass) ~ TransectDepth + CurrentMax + SlopeAngle,
             random = ~ 1 | Site, data = data, method = "ML")
 # four variables
 
-Lm15.bio  <- lme(Biomass ~ CurrentMax + TransectDepth + SlopeAngle + PercRock, 
+Lm15.bio  <- lme(log10(Biomass) ~ CurrentMax + TransectDepth + SlopeAngle + PercRock, 
             random = ~ 1 | Site, data = data, method = "ML")
 
-bbmle::AICtab(Null.bio, Lm1.bio, Lm2.bio, Lm3.bio, Lm4.bio, Lm5.bio, Lm6.bio, Lm7.bio, Lm8.bio, Lm9.bio, 
+bbmle::AICctab(Null.bio, Lm1.bio, Lm2.bio, Lm3.bio, Lm4.bio, Lm5.bio, Lm6.bio, Lm7.bio, Lm8.bio, Lm9.bio, 
               Lm10.bio, Lm11.bio, Lm12.bio, Lm13.bio, Lm14.bio, Lm15.bio, base = T, weights = T, logLik = T)
 ```
 
@@ -443,6 +448,10 @@ sjPlot::plot_model(Lm5.bio)
 sjPlot::plot_model(Lm6.bio)
 
 sjPlot::plot_model(Lm7.bio)
+
+sjPlot::plot_model(Lm15.bio, sort.est = TRUE, show.values = T, dot.size = 3, colors = "Accent", theme = theme_bw())
+
+summary(Lm15.bio)
 
 
 ```
@@ -509,16 +518,49 @@ Lm15.r  <- lme(Richness ~ CurrentMax + TransectDepth + SlopeAngle + PercRock,
             random = ~ 1 | Site, data = data, method = "ML")
 
 
-bbmle::AICtab(Null.r, Lm1.r, Lm2.r, Lm3.r, Lm4.r, Lm5.r, Lm6.r, Lm7.r, Lm8.r, Lm9.r, Lm10.r, Lm11.r, Lm12.r, Lm13.r, Lm14.r, Lm15.r, base = T, weights = T, logLik = T)
+bbmle::AICctab(Null.r, Lm1.r, Lm2.r, Lm3.r, Lm4.r, Lm5.r, Lm6.r, Lm7.r, Lm8.r, Lm9.r, Lm10.r, Lm11.r, Lm12.r, Lm13.r, Lm14.r, Lm15.r, base = T, weights = T, logLik = T)
 
 plot(Lm7.r)
 
 qqnorm(resid(Lm7.r))
 
+sjPlot::plot_model(Lm7.r, sort.est = TRUE, show.values = T, dot.size = 3, colors = "Accent", theme = theme_bw())
+
 ```
 
+### PLot of coefficient plot from top model from abundnace, biomass, and richness
 
-## Length and depth relationships
+``` {r, echo = F}
+# models
+# abundance:
+Lm13.ab  <- lme(Abundance ~ TransectDepth + CurrentMax + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+Lm13.ab.var <- update(Lm13.ab, weights = varExp(form = ~fitted(.)),method = "ML")
+
+sjPlot::plot_model(Lm15.ab.var, sort.est = TRUE, show.values = T, dot.size = 3, colors = "Accent", theme = theme_bw())
+
+#biomass:
+Lm1.bio <-  lme(log10(Biomass) ~ TransectDepth, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+sjPlot::plot_model(Lm1.bio, sort.est = TRUE, show.values = T, dot.size = 3, colors = "Accent", theme = theme_bw())
+
+#richness:
+Lm7.r  <- lme(Richness ~ TransectDepth + PercRock, 
+            random = ~ 1 | Site, data = data, method = "ML")
+
+sjPlot::plot_model(Lm7.r, sort.est = TRUE, show.values = T, dot.size = 3, colors = "Accent", theme = theme_bw())
+
+
+ggplot() +
+geom_pointrange(data = Lm1.bio, aes(x=treatment, y=attack, ymax=attack.up, ymin = attack.low), size =0.6) +
+labs(x = "", y = "(log) Attack rate") +
+ylim(0.2, 2.0) +
+theme_classic() 
+
+```
+
+### Length and depth relationships
 
 Jill is interested in understanding how fish length changes in relation to species and in relation to depth. Are some species larger at deeper depths than others despite species differences? 
 
@@ -530,6 +572,10 @@ I think that this can be modeled in two ways.
 
 
 ``` {r, echo = F}
+# read in species and laxlength from fishbase file
+
+fishbase <- read_csv("fishbaselengths.csv")
+
 
 
 # Fit a model on all the data pooled together
@@ -537,18 +583,24 @@ fishdata <- fishdata %>% mutate(TransectDepth = as.character(TransectDepth))
 
 fishdata <- fishdata %>% mutate(TransectDepth = recode(TransectDepth, '15' = "B", '3' = "A")) # changed these so that they would show up with 3 m as base since it is alphabetical in the model coefficients
 
+
+
 fishdata <- fishdata %>% arrange(TransectDepth)
 
 fishdata %>% ggplot() + geom_point(aes(TransectDepth, Length, colour = CommonName), show.legend = F)
 
-fishdata %>% group_by(CommonName, Species) %>% summarise(n = n()) %>% print(n = Inf)
+fishdata %>% group_by(CommonName, Latin) %>% summarise(n = n()) %>% print(n = Inf)
+
+# merge fishbase lengths with lengths data
+
+fishdata <- left_join(fishdata, fishbase, by = "Latin")
 
 # running a random effect for fish species
 null <- lme(log10(Length) ~ 1, 
-            random = ~ 1 + TransectDepth| CommonName, data = fishdata, method = "ML")
+            random = ~ 1 + TransectDepth| Latin, data = fishdata, method = "ML")
 
 m_partialpooled <- lme(log10(Length) ~ TransectDepth, 
-                        random = ~ 1 + TransectDepth| CommonName, data = fishdata, method = "ML")
+                        random = ~ 1 + TransectDepth|Latin, data = fishdata, method = "ML")
 
 bbmle::AICtab(null, m_partialpooled, base = T, weights = T, logLik = T)
 
@@ -564,7 +616,7 @@ qqnorm(resid(m_partialpooled))
 df_partial_pooling <- coef(m_partialpooled) %>% 
   as_tibble() %>% 
   rename(Intercept = `(Intercept)`, deep_depth = TransectDepthB) %>% 
-  add_column(Model = "Partial pooling") %>% add_column(Subject = sort(unique(fishdata$CommonName)))
+  add_column(Model = "Partial pooling") %>% add_column(Latin = sort(unique(fishdata$Latin)))
 
 # pull out overall coefficient for depth 
 
@@ -573,7 +625,7 @@ coef(summary(m_partialpooled))
 # Repeat the mean for each species
 df_pooled <- tibble(
   Model = "Complete pooling",
-  Subject = unique(fishdata$CommonName),
+  Latin = unique(fishdata$Latin),
   Intercept = coef(summary(m_partialpooled))[1], 
   deep_depth = coef(summary(m_partialpooled))[2]
 )
@@ -582,13 +634,40 @@ df_pooled
 
 # combine coefficients for plotting 
 
-df_models <- left_join(df_pooled, df_partial_pooling, by = "Subject")
+df_models <- left_join(df_pooled, df_partial_pooling, by = "Latin")
 
-# quick and direty plot of coefficients
-df_models %>% ggplot() + geom_point(aes(Intercept.x, Subject), colour = "grey") + geom_point(aes((Intercept.x+deep_depth.x), Subject), colour = "pink") +
-  geom_point(aes((Intercept.y+deep_depth.y), Subject), colour = "red", size = 2) + geom_point(aes(Intercept.y, Subject), colour = "black", size = 2) + 
-  xlab("log mean Length") +
+#add fish base lengths in
+df_models <- left_join(df_models, fishbase, by = "Latin")
+
+# reorder by fishbase length
+
+df_models <-df_models %>%
+  arrange(Fishbaselength) %>%    # First sort by fishbaselength. This sort the dataframe but NOT the factor levels
+  mutate(Latin=factor(Latin, levels=Latin)) #this trick will update the factor levels
+
+# quick and dirty plot of coefficients
+df_models %>% ggplot() + geom_point(aes(Intercept.x, Latin, colour = "Intercept.x")) + geom_point(aes((Intercept.x+deep_depth.x), Latin, color = "deep_depth.x")) +
+  geom_point(aes(Intercept.y, Latin, colour = "Intercept.y"), size = 2) + 
+    geom_point(aes((Intercept.y+deep_depth.y), Latin, colour = "deep_depth.y"), size = 2) +
+  geom_linerange(aes(xmin = (Intercept.y+deep_depth.y), y = Latin, xmax = (Intercept.y))) +
+    scale_color_manual(values = c("Intercept.x" = "grey", "deep_depth.x" = "pink", 
+                               "Intercept.y" = "black", "deep_depth.y" = "red"), name = "", 
+                        labels=c("overall 3m", "overall 15m", "partial 3m", "partial 15m")) +
+  xlab("mean log Length") +
   ylab("Fish species")+ 
-  theme_bw()
+  theme_classic() 
 
+
+# plot of coefficients in order of fishbase max length
+df_models %>% ggplot() + geom_point(aes(Intercept.x, Latin, colour = "Intercept.x")) + geom_point(aes((Intercept.x+deep_depth.x), Latin, color = "deep_depth.x")) +
+  geom_point(aes(Intercept.y, Latin, colour = "Intercept.y"), size = 2) + 
+    geom_point(aes((Intercept.y+deep_depth.y), Latin, colour = "deep_depth.y"), size = 2) +
+  geom_segment(aes(xend = (Intercept.y+deep_depth.y), y = Latin, x = (Intercept.y), yend = Latin), 
+               arrow =arrow(length=unit(0.20,"cm"))) +
+    scale_color_manual(values = c("Intercept.x" = "grey", "deep_depth.x" = "pink", 
+                               "Intercept.y" = "black", "deep_depth.y" = "red"), name = "", 
+                        labels=c("overall 3m", "overall 15m", "partial 3m", "partial 15m")) +
+  xlab("mean log Length") +
+  ylab("Fish species")+ 
+  theme_classic() 
 ```
